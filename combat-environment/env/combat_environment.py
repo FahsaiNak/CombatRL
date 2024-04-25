@@ -2,6 +2,7 @@ from pettingzoo import ParallelEnv
 import numpy as np
 from copy import copy
 from utils import calculate_potential
+from gymnasium.spaces import MultiDiscrete
 
 
 class CombatEnvironment(ParallelEnv):
@@ -77,11 +78,11 @@ class CombatEnvironment(ParallelEnv):
         antigen_action = actions["antigen"]
 
         # Update antibody sequence
-        for pos in np.where(antibody_action == 1)[0]:
-            self.antibody_seq[pos] = 1 - self.antibody_seq[pos]
+        antibody_action_positions = np.where(antibody_action != 0)[0]
+        self.antibody_seq[antibody_action_positions] = 1 - self.antibody_seq[antibody_action_positions]
         # Update antigen sequence
-        for pos in np.where(antigen_action == 1)[0]:
-            self.antigen_seq[pos] = 1 - self.antigen_seq[pos]
+        antigen_action_positions = np.where(antigen_action != 0)[0]
+        self.antigen_seq[antigen_action_positions] = 1 - self.antigen_seq[antigen_action_positions]
         
         # Check termination conditions
         terminations = {a: False for a in self.agents}
@@ -123,7 +124,13 @@ class CombatEnvironment(ParallelEnv):
         pass
 
     def observation_space(self, agent):
-        return self.observation_spaces[agent]
+        return MultiDiscrete(np.array([[2]*self.antibody_seq_len, [2]*self.antigen_seq_len]))
 
     def action_space(self, agent):
-        return self.action_spaces[agent]
+        """Return the action space for the agent
+        Actions are binary vectors of the same length as the antibody/antigen sequences
+        """
+        if agent == "antibody":
+            return MultiDiscrete([2]*self.antibody_seq_len)
+        elif agent == "antigen":
+            return MultiDiscrete([2]*self.antigen_seq_len)
