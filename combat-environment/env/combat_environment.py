@@ -1,9 +1,10 @@
 from pettingzoo import ParallelEnv
 import numpy as np
 from copy import copy
+from utils import calculate_potential
 
 
-class CustomEnvironment(ParallelEnv):
+class CombatEnvironment(ParallelEnv):
     metadata = {
         "name": "combat_environment_v0",
     }
@@ -23,7 +24,7 @@ class CustomEnvironment(ParallelEnv):
         self.antibody_seq_len = None
         self.antigen_seq = None
         self.antigen_seq_len = None
-        self.timestamp = None
+        self.timestep = None
         self.possible_agents = ["antibody", "antigen"]
 
     def reset(self, seed=None, options=None):
@@ -64,7 +65,7 @@ class CustomEnvironment(ParallelEnv):
         - terminations
         - truncations
         - rewards
-        - timestamp
+        - timestep
         - infos
 
         And any internal state used by observe() or render()
@@ -85,7 +86,33 @@ class CustomEnvironment(ParallelEnv):
         # Check termination conditions
         terminations = {a: False for a in self.agents}
         rewards = {a: 0 for a in self.agents}
-        pass
+        potential_antibody, potential_antigen = calculate_potential(self.antibody_seq, self.antigen_seq)
+        if potential_antibody == 0:
+            terminations = {a: True for a in self.agents}
+            rewards = {"antibody": 100, "antigen": -100}
+        elif potential_antigen == 0:
+            terminations = {a: True for a in self.agents}
+            rewards = {"antibody": -100, "antigen": 100}
+        
+        # Check truncation conditions (overwrites termination conditions)
+        truncations = {a: False for a in self.agents}
+        if self.timestep > 100:
+            rewards = {"antibody": 0, "antigen": 0}
+            truncations = {a: True for a in self.agents}
+        self.timestep += 1
+
+        # Get observations
+        observations = {
+            a: (self.antibody_seq, self.antigen_seq) for a in self.agents
+        }
+
+        # Get dummy infos (not used in this example)
+        infos = {a: {} for a in self.agents}
+
+        if any(terminations.values()) or all(truncations.values()):
+            self.agents = []
+        
+        return observations, rewards, terminations, truncations, infos
 
     def render(self):
         pass
