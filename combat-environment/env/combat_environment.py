@@ -1,4 +1,5 @@
 from pettingzoo import ParallelEnv
+import functools
 import numpy as np
 from copy import copy
 from utils import calculate_potential
@@ -23,8 +24,10 @@ class CombatEnvironment(ParallelEnv):
         """
         self.antibody_seq = None
         self.antibody_seq_len = None
+        self.antibody_potential = None
         self.antigen_seq = None
         self.antigen_seq_len = None
+        self.antigen_potential = None
         self.timestep = None
         self.possible_agents = ["antibody", "antigen"]
 
@@ -43,9 +46,11 @@ class CombatEnvironment(ParallelEnv):
         """
         self.agents = copy(self.possible_agents)
         self.timestep = 0
-
+        
+        self.antibody_seq_len = 10
         self.antibody_seq = np.random.choice([0,1], size=self.antibody_seq_len)
 
+        self.antigen_seq_len = 10
         self.antigen_seq = np.random.choice([0,1], size=self.antigen_seq_len)
 
         observations = {
@@ -87,16 +92,16 @@ class CombatEnvironment(ParallelEnv):
         # Check termination conditions
         terminations = {a: False for a in self.agents}
         rewards = {a: 0 for a in self.agents}
-        potential_antibody, potential_antigen = calculate_potential(self.antibody_seq, self.antigen_seq)
-        if potential_antibody == 0:
+        self.antibody_potential, self.antigen_potential = calculate_potential(self.antibody_seq, self.antigen_seq)
+        if self.antibody_potential == 0:
             terminations = {a: True for a in self.agents}
             rewards = {"antibody": 100, "antigen": -100}
-        elif potential_antigen == 0:
+        elif self.antigen_potential == 0:
             terminations = {a: True for a in self.agents}
             rewards = {"antibody": -100, "antigen": 100}
-        elif potential_antibody <= potential_antigen:
+        elif self.antibody_potential <= self.antigen_potential:
             rewards = {"antibody": 1, "antigen": -1}
-        else: # potential_antibody > potential_antigen
+        else: # self.antibody_potential > self.antigen_potential
             rewards = {"antibody": -1, "antigen": 1}
         
         # Check truncation conditions (overwrites termination conditions)
@@ -121,11 +126,15 @@ class CombatEnvironment(ParallelEnv):
         return observations, rewards, terminations, truncations, infos
 
     def render(self):
-        pass
+        """Renders the environment."""
+        confront = np.vstack((self.antibody_seq, self.antigen_seq))
+        print(f"{confront} \nBinding potential: {self.antibody_potential} \n")
 
+    @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
         return MultiDiscrete(np.array([[2]*self.antibody_seq_len, [2]*self.antigen_seq_len]))
 
+    @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
         """Return the action space for the agent
         Actions are binary vectors of the same length as the antibody/antigen sequences
