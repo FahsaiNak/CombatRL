@@ -93,12 +93,17 @@ class CombatEnvironment(ParallelEnv):
         elif potential_antigen == 0:
             terminations = {a: True for a in self.agents}
             rewards = {"antibody": -100, "antigen": 100}
+        elif potential_antibody <= potential_antigen:
+            rewards = {"antibody": 1, "antigen": -1}
+        else: # potential_antibody > potential_antigen
+            rewards = {"antibody": -1, "antigen": 1}
         
         # Check truncation conditions (overwrites termination conditions)
         truncations = {a: False for a in self.agents}
         if self.timestep > 100:
             rewards = {"antibody": 0, "antigen": 0}
             truncations = {a: True for a in self.agents}
+
         self.timestep += 1
 
         # Get observations
