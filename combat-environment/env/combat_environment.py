@@ -8,7 +8,7 @@ from gymnasium.spaces import MultiDiscrete
 
 class CombatEnvironment(ParallelEnv):
     metadata = {
-        "name": "combat_environment_v0",
+        "name": "multiple_choice_combat",
     }
 
     def __init__(self):
