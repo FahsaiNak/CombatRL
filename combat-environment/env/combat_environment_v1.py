@@ -124,8 +124,7 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         observations = {
             a: (self.antibody_seq, self.antigen_seq) for a in self.agents
         }
-        print(actions)
-        print(observations)
+        
         # Get dummy infos (not used in this example)
         infos = {a: {} for a in self.agents}
 
