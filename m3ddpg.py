@@ -21,7 +21,7 @@ class Agent():
         self.args = args
         self.name = name
         self.actor = Policy(state_dim, action_dim_lst).to(args.device)
-        self.critic = Critic(state_dim, action_dim_lst).to(args.device)
+        self.critic = Critic(state_dim, sum(action_dim_lst)).to(args.device)
         self.actor_target = deepcopy(self.actor)
         self.critic_target = deepcopy(self.critic)
         self.optimizer_actor = Adam(self.actor.parameters(), lr=args.actor_lr)
@@ -43,7 +43,6 @@ class M3DDPG():
         self.obs_shape_n = [env.observation_spaces[a].shape[0] for a in self.possible_agents]
         self.action_keys = [k for k in env.action_spaces[self.possible_agents[0]]]
         self.action_space = [env.action_spaces[self.possible_agents[0]][k] for k in env.action_spaces[self.possible_agents[0]]]
-        self.action_space_n = [s.shape for s in self.action_space]
         #num_adversaries = min(env.n, args.num_adversaries)
         self.agents = []
         for i in range(env.n):
@@ -64,9 +63,9 @@ class M3DDPG():
             observation_tensor = torch.tensor(np.hstack(state[a]),
                                               dtype=torch.float,
                                               device=self.args.device).view(-1, sum(self.obs_shape_n))
-            _action1, _action2 = agent.get_action(observation_tensor, greedy)
-            action1 = _action1.squeeze(0).detach().cpu().numpy().tolist()
-            action2 = _action2.squeeze(0).detach().cpu().numpy().tolist()
+            _action = agent.get_action(observation_tensor, greedy)
+            action = _action.squeeze(0).detach().cpu().numpy().tolist()
+            action1, action2 = action[:self.action_space[0].n], action[self.action_space[0].n:]
             action_dict = {}
             for k, v in zip(self.action_keys, [action1, action2]):
                 if k == 'step':
@@ -114,16 +113,24 @@ class M3DDPG():
 
             reward_batch = reward_n_batch[i]
             not_done_batch = not_done_n_batch[i]
-            print(i, agent.name, reward_batch, not_done_batch)
-            
-            _next_actions = [self.agents[j].actor(next_state_n_batch) for j in range(len(self.agents))]
-            _next_action_n_batch_critic = torch.cat([_next_action if j != i else _next_action.detach() for j, _next_action in enumerate(_next_actions)],axis=1).squeeze(0)
-            _critic_target_loss = self.agents[i].critic_target(next_state_n_batch, _next_action_n_batch_critic).mean()
+            print(i, agent.name)
+
+            _next_actions = [self.agents[j].actor(next_state_n_batch[j]) for j in range(len(self.agents))]
+            #print(_next_actions[i].grad)
+            #_next_actions = [torch.hstack(_next_actions[j]) for j in range(len(self.agents))]
+            _next_action_n_batch_critic = _next_actions[i]
+            #_next_action_n_batch_critic = torch.cat([_next_action if j != i else _next_action.detach() for j, _next_action in enumerate(_next_actions)],axis=1).squeeze(0)
+            #print(next_state_n_batch[i].shape, _next_action_n_batch_critic.shape)
+            _critic_target_loss = self.agents[i].critic_target(next_state_n_batch[i], _next_action_n_batch_critic).mean()
             _critic_target_loss.backward()
+            #for j, _next_action in enumerate(_next_actions):
+                #print(j, _next_action.retain_grad())
+            #print([_next_action.retain_grad() if j != i else _next_action for j, _next_action in enumerate(_next_actions)])
             with torch.no_grad():
                 next_action_n_batch_critic = torch.cat(
                     [_next_action + eps * _next_action.grad if j != i else _next_action for j, _next_action in enumerate(_next_actions)]
                     , axis=1).squeeze(0)
+            #print(next_action_n_batch_critic)
 
             _actions = [self.agents[j].actor(
                 state_n_batch[j]) for j in range(len(self.agents))]
