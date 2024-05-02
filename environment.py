@@ -30,10 +30,10 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         self.seed = args.seed
         self.max_episode_len = args.max_episode_len
         self.antibody_seq = None
-        self.antibody_seq_len = 10
+        self.antibody_seq_len = 4
         self.antibody_potential = None
         self.antigen_seq = None
-        self.antigen_seq_len = 10
+        self.antigen_seq_len = 4
         self.antigen_potential = None
         self.num_variants = args.num_variants
         self.timestep = None
@@ -56,8 +56,8 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         self.agents = copy(self.possible_agents)
         self.timestep = 0
 
-        self.antibody_seq = np.zeros(10, dtype=int) #np.random.choice([0,1], size=self.antibody_seq_len)
-        self.antigen_seq = np.zeros(10, dtype=int) #np.random.choice([0,1], size=self.antigen_seq_len)
+        self.antibody_seq = np.zeros(self.antibody_seq_len, dtype=int) #np.random.choice([0,1], size=self.antibody_seq_len) 
+        self.antigen_seq = np.zeros(self.antigen_seq_len, dtype=int) #np.random.choice([0,1], size=self.antigen_seq_len)
 
         #get observation with action mask for each agent
         observations = {
@@ -98,13 +98,16 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         
         # Check termination conditions
         terminations = {a: False for a in self.agents}
+        truncations = {a: False for a in self.agents}
         rewards = {a: 0 for a in self.agents}
         self.antibody_potential, self.antigen_potential = calculate_potential(self.antibody_seq, self.antigen_seq)
         if self.antibody_potential == 0:
-            terminations = {a: True for a in self.agents}
+            terminations = {'antibody': False, 'antigen': True}
+            truncations = {'antibody': True, 'antigen': False}
             rewards = {"antibody": 100, "antigen": -100}
         elif self.antigen_potential == 0:
-            terminations = {a: True for a in self.agents}
+            terminations = {'antibody': True, 'antigen': False}
+            truncations = {'antibody': False, 'antigen': True}
             rewards = {"antibody": -100, "antigen": 100}
         elif self.antibody_potential <= self.antigen_potential:
             rewards = {"antibody": 1, "antigen": -1}
@@ -113,7 +116,7 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         
         # Check truncation conditions (overwrites termination conditions)
         truncations = {a: False for a in self.agents}
-        if self.timestep > self.max_episode_len:
+        if self.timestep >= self.max_episode_len:
             rewards = {"antibody": 0, "antigen": 0}
             truncations = {a: True for a in self.agents}
 

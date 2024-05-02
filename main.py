@@ -70,9 +70,9 @@ def main():
     parser.add_argument('--device', default='cpu', type=str)
     parser.add_argument('--capacity', default='1e6', type=float)
     parser.add_argument('--steps', type=float, default=1e6)
-    parser.add_argument('--max_episode_len', type=int, default=20)
+    parser.add_argument('--max_episode_len', type=int, default=5)
     parser.add_argument('--start_steps', type=float, default=5e3)
-    parser.add_argument('--evaluate-interval', type=float, default=1e3)
+    parser.add_argument('--evaluate-interval', type=float, default=1e2)
     parser.add_argument('--evaluate_num', type=int, default=1)
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--eps', default=1e-5, type=float)
@@ -95,83 +95,57 @@ def main():
     #with open('{}/hyperparameters.json'.format(args.logger_dir), 'w') as f:
     #    f.write(json.dumps(args.__dict__))
 
+    N_GAMES = 50000
+    N_SAMPLES = 1000
+    MAX_STEPS = args.max_episode_len
+    PRINT_INTERVAL = 10
+
     env = make_env(args)
     env = set_seed(args.seed, env)
     m3ddpg = M3DDPG(args, env)
 
-    total_reward_list = []
-    reward_list = []
+    for n in range(N_GAMES):
+        state_n, _ = env.reset()
+        done_n = {a: False for a in env.possible_agents}
+        total_reward = {a: 0 for a in env.possible_agents}
+        int_state = [np.hstack(state_n[a]) for a in env.possible_agents][0]
+        int_is_final = False
 
-    step = 0
-    episode_step = 0
+        while not any(list(done_n.values())):
+            if n <= N_SAMPLES:
+                action_n = {a: env.action_space(a).sample() for a in env.possible_agents}
+            else:
+                action_n = m3ddpg.sample_action(state_n)
+                actor_loss, critic_loss = m3ddpg.update()
+            
+            next_state_n, reward_n, term_n, trunc_n, _ = env.step(action_n)
+            
+            for a in env.possible_agents:
+                total_reward[a] += reward_n[a]
+                if term_n[a] or trunc_n[a]:
+                    done_n[a] = True
+            
+            m3ddpg.add_memory_list(state_n, action_n, next_state_n, reward_n, done_n)
+            
+            state_n = next_state_n
 
-    state_n, _ = env.reset()
-    total_reward = {a: 0 for a in env.possible_agents}
-    done_n = {a: False for a in env.possible_agents}
-    actor_loss_list = []
-    critic_loss_list = []
+            if any(list(done_n.values())):# or episode_step > args.max_episode_len:)
+                final_state = [np.hstack(state_n[a]) for a in env.possible_agents][0]
+                if np.array_equal(int_state, final_state):
+                    int_is_final = True
+                if n % PRINT_INTERVAL == 0:
+                    print(f'game: {n}  reward: {total_reward} {int_is_final} {term_n}')
+                    try:
+                        print(f'actor loss: {actor_loss}  critic loss: {critic_loss}')
+                    except:
+                        pass
 
-    while not any(list(done_n.values())):
-        if step <= args.start_steps:
-            action_n = {a: env.action_space(a).sample() for a in env.possible_agents}
-        else:
-            action_n = m3ddpg.sample_action(state_n)
-        #agent_action = make_action(action_n, env.action_space, num_variants)
-        next_state_n, reward_n, term_n, trunc_n, _ = env.step(action_n)
-        print(term_n, trunc_n)
-        for a in env.possible_agents:
-            total_reward[a] += reward_n[a]
-            if term_n[a] or trunc_n[a]:
-                done_n[a] = True
-        m3ddpg.add_memory_list(state_n, action_n, next_state_n, reward_n, done_n)
-        episode_step += 1
-        if step >= args.start_steps:
-            actor_loss, critic_loss = m3ddpg.update()
-            if actor_loss is not None:
-                actor_loss_list.append(actor_loss)
-                critic_loss_list.append(critic_loss)
-
-        state_n = next_state_n
-
-        if step % args.evaluate_interval == 0:
+        if n >= N_SAMPLES and n % args.evaluate_interval == 0:
             rewards = evaluate(m3ddpg, args)
             print('====================')
-            print(f'step: {step}  reward: {rewards}')
+            print(f'game: {n}  reward: {rewards}')
             print('====================')
-            reward_list.append(rewards)
-            results = {
-                'train_reward': total_reward_list,
-                'reward_list': reward_list,
-                }
-            #pickle.dump(results, open(
-            #    '{}/results.pkl'.format(args.logger_dir), 'wb'))
 
-        if step > args.steps:
-            break
-        step += 1
-
-        if any(list(done_n.values())):# or episode_step > args.max_episode_len:
-            total_reward_list.append(total_reward)
-            if any(list(done_n.values())) and len(actor_loss_list) != 0:
-                actor_loss = np.mean(actor_loss_list, axis=0)
-                critic_loss = np.mean(critic_loss_list, axis=0)
-                print(f'step: {step}  reward: {total_reward}  actor loss: {actor_loss}  critic loss: {critic_loss}')
-            total_reward = {a: 0 for a in env.possible_agents}
-            episode_step = 0
-            state_n, _ = env.reset()
-            actor_loss_list = []
-            critic_loss_list = []
-
-    results = {
-        'train_reward': total_reward_list,
-        'reward_list': reward_list,
-    }
-
-    #pickle.dump(results, open(
-    #                            '{}/results{}.pkl'.format('results', args.seed), 'wb'))
-
-    #pickle.dump(results, open(
-    #    '{}/results.pkl'.format(args.logger_dir), 'wb'))
 
 if __name__ == '__main__':
     main()

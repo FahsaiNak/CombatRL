@@ -119,7 +119,7 @@ class M3DDPG():
                 _.retain_grad()
             _next_action_n_batch_critic = torch.cat([_next_action if j != i else _next_action.detach() for j, _next_action in enumerate(_next_actions)],axis=1).squeeze(0)
             _critic_target_loss = self.agents[i].critic_target(next_state_n_batch[i], _next_action_n_batch_critic).mean()
-            _critic_target_loss.backward(retain_graph=True)
+            _critic_target_loss.backward()
             with torch.no_grad():
                 next_action_n_batch_critic = torch.cat(
                     [_next_action + eps * _next_action.grad if j != i else _next_action for j, _next_action in enumerate(_next_actions)]
@@ -140,7 +140,7 @@ class M3DDPG():
             action_n_batch_ = torch.cat([action_n_batch[j] for j in range(len(self.agents))], axis=1)
             currentQ = agent.critic(state_n_batch[i], action_n_batch_).flatten()
             nextQ = agent.critic_target(next_state_n_batch[i], next_action_n_batch_critic).flatten()
-            targetQ = (reward_batch + self.args.gamma * not_done_batch * nextQ)
+            targetQ = (reward_batch + self.args.gamma * not_done_batch * nextQ).detach()
             critic_loss = F.mse_loss(currentQ, targetQ)
             agent.optimizer_critic.zero_grad()
             critic_loss.backward()
