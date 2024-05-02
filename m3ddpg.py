@@ -21,7 +21,7 @@ class Agent():
         self.args = args
         self.name = name
         self.actor = Policy(state_dim, action_dim_lst).to(args.device)
-        self.critic = Critic(state_dim, sum(action_dim_lst)).to(args.device)
+        self.critic = Critic(state_dim, sum(action_dim_lst)*self.args.num_agents).to(args.device)
         self.actor_target = deepcopy(self.actor)
         self.critic_target = deepcopy(self.critic)
         self.optimizer_actor = Adam(self.actor.parameters(), lr=args.actor_lr)
@@ -113,46 +113,42 @@ class M3DDPG():
 
             reward_batch = reward_n_batch[i]
             not_done_batch = not_done_n_batch[i]
-            print(i, agent.name)
 
             _next_actions = [self.agents[j].actor(next_state_n_batch[j]) for j in range(len(self.agents))]
-            #print(_next_actions[i].grad)
-            #_next_actions = [torch.hstack(_next_actions[j]) for j in range(len(self.agents))]
-            _next_action_n_batch_critic = _next_actions[i]
-            #_next_action_n_batch_critic = torch.cat([_next_action if j != i else _next_action.detach() for j, _next_action in enumerate(_next_actions)],axis=1).squeeze(0)
-            #print(next_state_n_batch[i].shape, _next_action_n_batch_critic.shape)
+            for _ in _next_actions:
+                _.retain_grad()
+            _next_action_n_batch_critic = torch.cat([_next_action if j != i else _next_action.detach() for j, _next_action in enumerate(_next_actions)],axis=1).squeeze(0)
             _critic_target_loss = self.agents[i].critic_target(next_state_n_batch[i], _next_action_n_batch_critic).mean()
-            _critic_target_loss.backward()
-            #for j, _next_action in enumerate(_next_actions):
-                #print(j, _next_action.retain_grad())
-            #print([_next_action.retain_grad() if j != i else _next_action for j, _next_action in enumerate(_next_actions)])
+            _critic_target_loss.backward(retain_graph=True)
             with torch.no_grad():
                 next_action_n_batch_critic = torch.cat(
                     [_next_action + eps * _next_action.grad if j != i else _next_action for j, _next_action in enumerate(_next_actions)]
                     , axis=1).squeeze(0)
-            #print(next_action_n_batch_critic)
 
             _actions = [self.agents[j].actor(
                 state_n_batch[j]) for j in range(len(self.agents))]
+            for _ in _actions:
+                _.retain_grad()
             _action_n_batch_actor = torch.cat([_action if j != i else _action.detach() for j, _action in enumerate(_actions)], axis=1)
             _actor_target_loss = self.agents[i].critic(
-                state_n_batch, _action_n_batch_actor).mean()
-            _actor_target_loss.backward()
+                state_n_batch[i], _action_n_batch_actor).mean()
+            _actor_target_loss.backward(retain_graph=True)
             action_n_batch_actor = torch.cat(
                     [_action + eps * _action.grad if j != i else _action for j, _action in enumerate(_actions)], axis=1)
 
             ##critic
-            agent.optimizer_critic.zero_grad()
-            currentQ = agent.critic(state_n_batch, action_n_batch)
-            nextQ = agent.critic_target(next_state_n_batch, next_action_n_batch_critic)
-            targetQ = reward_batch + self.args.gamma * not_done_batch * nextQ
+            action_n_batch_ = torch.cat([action_n_batch[j] for j in range(len(self.agents))], axis=1)
+            currentQ = agent.critic(state_n_batch[i], action_n_batch_).flatten()
+            nextQ = agent.critic_target(next_state_n_batch[i], next_action_n_batch_critic).flatten()
+            targetQ = (reward_batch + self.args.gamma * not_done_batch * nextQ)
             critic_loss = F.mse_loss(currentQ, targetQ)
+            agent.optimizer_critic.zero_grad()
             critic_loss.backward()
             agent.optimizer_critic.step()
 
             ##policy
+            actor_loss = - agent.critic(state_n_batch[i], action_n_batch_actor).mean()
             agent.optimizer_actor.zero_grad()
-            actor_loss = - agent.critic(state_n_batch, action_n_batch_actor).mean()
             actor_loss.backward()
             agent.optimizer_actor.step()
 

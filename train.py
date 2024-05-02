@@ -65,14 +65,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='cpu', type=str)
     parser.add_argument('--capacity', default='1e6', type=float)
-    parser.add_argument('--steps', type=float, default=1e6)
+    parser.add_argument('--steps', type=float, default=1e3)
     parser.add_argument('--max_episode_len', type=int, default=100)
-    parser.add_argument('--start_steps', type=float, default=1e3)
-    parser.add_argument('--evaluate-interval', type=float, default=1e3)
+    parser.add_argument('--start_steps', type=float, default=1e2)
+    parser.add_argument('--evaluate-interval', type=float, default=1e2)
     parser.add_argument('--evaluate_num', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=4)
+    parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--eps', default=1e-5, type=float)
     parser.add_argument('--adv-eps', default=1e-3, type=float)
+    parser.add_argument('--num-agents', type=int, default=2)
     parser.add_argument('--num-adversaries', type=int, default=1)
     parser.add_argument('--gamma', default=0.99, type=float)
     parser.add_argument('--tau', default=5e-3, type=float)
@@ -107,14 +108,13 @@ def main():
     actor_loss_list = []
     critic_loss_list = []
 
-    while True:
+    while not any(list(done_n.values())):
         if step <= args.start_steps:
             action_n = {a: env.action_space(a).sample() for a in env.possible_agents}
         else:
             action_n = m3ddpg.sample_action(state_n)
         #agent_action = make_action(action_n, env.action_space, num_variants)
         next_state_n, reward_n, term_n, trunc_n, _ = env.step(action_n)
-        #print(f'step: {step}  reward: {reward_n}  term: {term_n}  trunc: {trunc_n}')
         for a in env.possible_agents:
             total_reward[a] += reward_n[a]
             if term_n[a] or trunc_n[a]:
@@ -123,10 +123,9 @@ def main():
         episode_step += 1
         if step >= args.start_steps:
             actor_loss, critic_loss = m3ddpg.update()
-            print(actor_loss, critic_loss)
             if actor_loss is not None:
-                actor_loss_list.append(actor_loss)
-                critic_loss_list.append(critic_loss)
+                actor_loss_list.extend(actor_loss)
+                critic_loss_list.extend(critic_loss)
 
         state_n = next_state_n
 
