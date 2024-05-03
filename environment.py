@@ -103,13 +103,13 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         self.antibody_potential, self.antigen_potential = calculate_potential(self.antibody_seq, self.antigen_seq)
 
         #best potential 
-        P_best, _, _ = BestPotential(self.antibody_seq_len)
+        P_best_A,P_best_B, _, _ = BestPotential(self.antibody_seq_len)
 
-        if self.antibody_potential <= P_best:
+        if self.antibody_potential <= P_best_A:
             terminations = {'antibody': False, 'antigen': True}
             truncations = {'antibody': True, 'antigen': False}
             rewards = {"antibody": 100, "antigen": -100}
-        elif self.antigen_potential <= P_best:
+        elif self.antigen_potential <= P_best_B:
             terminations = {'antibody': True, 'antigen': False}
             truncations = {'antibody': False, 'antigen': True}
             rewards = {"antibody": -100, "antigen": 100}

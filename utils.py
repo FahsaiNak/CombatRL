@@ -37,6 +37,17 @@ def BestPotential(N, best_percent = 0.009, init_percent = 0.005):
             puse = sorted(PspaceA.flatten())[:int(percent*Npos)][-1]
             idxuse = np.where(PspaceA <= puse)
 
+    puseA = puse
     actual_best = len(idxuse[0])/Npos
     percent_win = sum(PspaceA.ravel()< PspaceB.ravel())/Npos + sum(PspaceA.ravel() == PspaceB.ravel())/Npos
-    return puse, percent_win, actual_best
+
+    percent = init_percent
+    puse = sorted(PspaceB.flatten())[:int(percent*Npos)][-1]
+    idxuse = np.where(PspaceB <= puse)
+    while len(idxuse[0])/Npos < percent or percent <= best_percent:
+            percent += 0.00001
+            puse = sorted(PspaceB.flatten())[:int(percent*Npos)][-1]
+            idxuse = np.where(PspaceB <= puse)
+    puseB = puse
+
+    return puseA, puseB, percent_win, actual_best

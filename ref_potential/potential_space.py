@@ -38,19 +38,33 @@ def BestPotential(N, best_percent = 0.009, init_percent = 0.005):
             percent += 0.00001
             puse = sorted(PspaceA.flatten())[:int(percent*Npos)][-1]
             idxuse = np.where(PspaceA <= puse)
+
+    puseA = puse
     #print(puse)
     actual_best = len(idxuse[0])/Npos
     #print(actual_best,len(idxuse[0]) )
     percent_win = sum(PspaceA.ravel()< PspaceB.ravel())/Npos + sum(PspaceA.ravel() == PspaceB.ravel())/Npos
     #print(percent_win)
-    return puse, percent_win, actual_best
+
+    percent = init_percent
+    puse = sorted(PspaceB.flatten())[:int(percent*Npos)][-1]
+    idxuse = np.where(PspaceB <= puse)
+    #print(len(idxuse[0])/Npos)
+    while len(idxuse[0])/Npos < percent or percent <= best_percent:
+            percent += 0.00001
+            puse = sorted(PspaceB.flatten())[:int(percent*Npos)][-1]
+            idxuse = np.where(PspaceB <= puse)
+    puseB = puse
+
+    return puseA, puseB, percent_win, actual_best
+
 
 N = [4,5,6,7,8]
 actual_best = []
 for n in N:
-    puse, percent_win, best = BestPotential(n, 0.009, 0.005)
+    puseA,puseB, percent_win, best = BestPotential(n, 0.009, 0.005)
     actual_best.append(best)
-    print(n, puse, percent_win, best)
+    print("N:",n,"PA: ", puseA, "PB: ",puseB, percent_win, best)
 
 plt.plot(N, actual_best)
 plt.show()
