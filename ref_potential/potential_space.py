@@ -17,7 +17,7 @@ def potential(A, B, c1=-0.22, c2=5):
     Pb = np.exp(c1*sum(B))*np.sin(c2*sum(B)/n*np.pi)*np.cos(sum(A)/n*np.pi)
     return Pa, Pb
 
-def BestPotential(N, best_percent = 0.01, init_percent = 0.0005):
+def BestPotential(N, best_percent = 0.009, init_percent = 0.005):
 
     all_combi = []
     for i in range(N+1):
