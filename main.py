@@ -96,7 +96,7 @@ def main():
     #    f.write(json.dumps(args.__dict__))
 
     N_GAMES = 50000
-    N_SAMPLES = 1000
+    N_SAMPLES = 10000
     MAX_STEPS = args.max_episode_len
     PRINT_INTERVAL = 10
 
