@@ -27,12 +27,12 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         - possible agents
         """
         self.antibody_seq = None
-        self.antibody_seq_len = None
+        self.antibody_seq_len = 10
         self.antibody_potential = None
         self.antigen_seq = None
-        self.antigen_seq_len = None
+        self.antigen_seq_len = 10
         self.antigen_potential = None
-        self.num_variants = None
+        self.num_variants = 2
         self.timestep = None
         self.possible_agents = ["antibody", "antigen"]
 
@@ -52,13 +52,8 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         self.agents = copy(self.possible_agents)
         self.timestep = 0
         
-        self.antibody_seq_len = 10
-        self.antibody_seq = np.random.choice([0,1], size=self.antibody_seq_len)
-
-        self.antigen_seq_len = 10
-        self.antigen_seq = np.random.choice([0,1], size=self.antigen_seq_len)
-
-        self.num_variants = 2
+        self.antibody_seq = np.zeros(10, dtype=int) #np.random.choice([0,1], size=self.antibody_seq_len)
+        self.antigen_seq = np.zeros(10, dtype=int) #np.random.choice([0,1], size=self.antigen_seq_len)
 
         #get observation with action mask for each agent
         observations = {
@@ -140,16 +135,23 @@ class CombatActionMaskedEnvironment(ParallelEnv):
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
-        return MultiDiscrete(np.array([[2]*self.antibody_seq_len, [2]*self.antigen_seq_len]))
+        if agent == "antibody":
+            return MultiDiscrete([2]*self.antibody_seq_len)
+        elif agent == "antigen":
+            return MultiDiscrete([2]*self.antigen_seq_len)
 
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
         """Return the action space for the agent
         Actions are vectors of positions to mutate and chosen variants
         """
-        if agent == "antibody":
-            return Dict({"position": Discrete(self.antibody_seq_len),
-                         "step": Discrete(self.num_variants-1, start=self.num_variants+1)})
-        elif agent == "antigen":
-            return Dict({"position": Discrete(self.antigen_seq_len),
-                         "step": Discrete(self.num_variants-1, start=self.num_variants+1)})
+        return Dict({"position": Discrete(self.antibody_seq_len),
+                     "step": Discrete(self.num_variants-1, start=self.num_variants+1)})
+
+    @property
+    def observation_spaces(self):
+        return {a: self.observation_space(a) for a in self.possible_agents}
+    
+    @property
+    def action_spaces(self):
+        return {a: self.action_space(a) for a in self.possible_agents}
