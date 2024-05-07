@@ -43,7 +43,6 @@ class M3DDPG():
         self.obs_shape_n = [env.observation_spaces[a].shape[0] for a in self.possible_agents]
         self.action_keys = [k for k in env.action_spaces[self.possible_agents[0]]]
         self.action_space = [env.action_spaces[self.possible_agents[0]][k] for k in env.action_spaces[self.possible_agents[0]]]
-        #num_adversaries = min(env.n, args.num_adversaries)
         self.agents = []
         for i in range(env.n):
             self.agents.append(Agent(args,
@@ -110,7 +109,6 @@ class M3DDPG():
                 eps = self.args.eps
             else:
                 eps = self.args.adv_eps
-
             reward_batch = reward_n_batch[i]
             not_done_batch = not_done_n_batch[i]
 

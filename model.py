@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class Policy(nn.Module):
-    def __init__(self, state_dim, action_dim_lst, fc1_dims=32, fc2_dims=32):
+    def __init__(self, state_dim, action_dim_lst, fc1_dims=16, fc2_dims=16):
         super(Policy, self).__init__()
         self.fc1 = nn.Linear(state_dim, fc1_dims)
         self.fc2 = nn.Linear(fc1_dims, fc2_dims)
@@ -23,7 +23,7 @@ class Policy(nn.Module):
 
 
 class Critic(nn.Module):
-    def __init__(self, state_dim, action_dim, fc1_dims=32, fc2_dims=32):
+    def __init__(self, state_dim, action_dim, fc1_dims=16, fc2_dims=16):
         super(Critic, self).__init__()
         self.fc1 = nn.Linear(state_dim+action_dim, fc1_dims)
         self.fc2 = nn.Linear(fc1_dims, fc2_dims)
