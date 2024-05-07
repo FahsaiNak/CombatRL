@@ -3,7 +3,7 @@ import argparse
 import functools
 import numpy as np
 from copy import copy
-from utils import calculate_potential
+from utils import calculate_potential, BestPotential
 from gymnasium.spaces import MultiDiscrete, Dict, Discrete
 
 
@@ -30,15 +30,19 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         self.seed = args.seed
         self.max_episode_len = args.max_episode_len
         self.antibody_seq = None
-        self.antibody_seq_len = 4
+        self.antibody_seq_len = args.seq_len
         self.antibody_potential = None
         self.antigen_seq = None
-        self.antigen_seq_len = 4
+        self.antigen_seq_len = args.seq_len
         self.antigen_potential = None
         self.num_variants = args.num_variants
         self.timestep = None
         self.possible_agents = ["antibody", "antigen"]
         self.n = len(self.possible_agents)
+        P_best_A, P_best_B, _, _ = BestPotential(self.antibody_seq_len)
+        self.antibody_P_best = P_best_A
+        #self.antigen_P_best = P_best_B
+
 
     def reset(self, seed=None, options=None):
         """Reset set the environment to a starting point.
@@ -56,8 +60,12 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         self.agents = copy(self.possible_agents)
         self.timestep = 0
 
-        self.antibody_seq = np.zeros(self.antibody_seq_len, dtype=int) #np.random.choice([0,1], size=self.antibody_seq_len) 
-        self.antigen_seq = np.zeros(self.antigen_seq_len, dtype=int) #np.random.choice([0,1], size=self.antigen_seq_len)
+        np.random.seed(seed)
+        #self.antibody_seq = np.zeros(self.antibody_seq_len, dtype=int)
+        self.antibody_seq = np.random.choice([0,1], size=self.antibody_seq_len)
+        np.random.seed(seed+1)
+        #self.antigen_seq = np.zeros(self.antigen_seq_len, dtype=int)
+        self.antigen_seq = np.random.choice([0,1], size=self.antigen_seq_len)
 
         #get observation with action mask for each agent
         observations = {
@@ -100,25 +108,26 @@ class CombatActionMaskedEnvironment(ParallelEnv):
         terminations = {a: False for a in self.agents}
         truncations = {a: False for a in self.agents}
         rewards = {a: 0 for a in self.agents}
+        
         self.antibody_potential, self.antigen_potential = calculate_potential(self.antibody_seq, self.antigen_seq)
-        if self.antibody_potential == 0:
+
+        if self.antibody_potential <= self.antibody_P_best:
             terminations = {'antibody': False, 'antigen': True}
             truncations = {'antibody': True, 'antigen': False}
             rewards = {"antibody": 100, "antigen": -100}
-        elif self.antigen_potential == 0:
-            terminations = {'antibody': True, 'antigen': False}
-            truncations = {'antibody': False, 'antigen': True}
-            rewards = {"antibody": -100, "antigen": 100}
-        elif self.antibody_potential <= self.antigen_potential:
-            rewards = {"antibody": 1, "antigen": -1}
+        #elif self.antigen_potential <= self.antigen_P_best:
+            #terminations = {'antibody': True, 'antigen': False}
+            #truncations = {'antibody': False, 'antigen': True}
+            #rewards = {"antibody": -100, "antigen": 100}
+        #elif self.antibody_potential <= self.antigen_potential:
+            #rewards = {"antibody": 1, "antigen": 0}
         else: # self.antibody_potential > self.antigen_potential
-            rewards = {"antibody": -1, "antigen": 1}
-        
+            rewards = {"antibody": -1, "antigen": 0}
         # Check truncation conditions (overwrites termination conditions)
-        truncations = {a: False for a in self.agents}
-        if self.timestep >= self.max_episode_len:
-            rewards = {"antibody": 0, "antigen": 0}
-            truncations = {a: True for a in self.agents}
+        if self.timestep >= self.max_episode_len-1:
+            rewards = {"antibody": -100, "antigen": 100}
+            terminations = {'antibody': True, 'antigen': False}
+            #truncations = {'antibody': False, 'antigen': True}
 
         self.timestep += 1
 
