@@ -1,5 +1,6 @@
 # CombatRL: Antibody-Virus Co-evolution Simulation with MARL
 This project investigates the potential of Multi-Agent Reinforcement Learning (MARL) approaches to simulate antibody-virus co-evolution.
+![Pic](combatRL.png)
 
 ### About
 Simulating antibody-virus co-evolution is crucial for understanding immune response and developing effective vaccines. This study explores two MARL algorithms: [Q-learning](https://doi.org/10.1016/B978-1-55860-335-6.50027-1) and [Minimax Deep Deterministic Policy Gradient (M3DDPG)](https://people.eecs.berkeley.edu/~russell/papers/aaai19-marl.pdf). The agents represent an antibody and an antigen interacting within a simulated environment. The antibody strives to bind to the antigen, while the antigen attempts to mutate its structure to evade binding.
