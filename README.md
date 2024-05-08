@@ -1,4 +1,4 @@
-# CombatRL: Antibody-Virus Co-evolution Simulation with MARL
+# Antibody-Virus Co-evolution Simulation with MARL
 This project investigates the potential of Multi-Agent Reinforcement Learning (MARL) approaches to simulate antibody-virus co-evolution.
 <p align="center">
   <img src="combatRL.png" width="600" center>
