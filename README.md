@@ -21,5 +21,5 @@ The simulation environment models the interaction between the antibody and antig
 * (Optional) [Gymnasium](https://github.com/openai/gym?tab=readme-ov-file)
 
 ### Implementation
-* Q-learning: ```python -m q-learning```
+* Q-learning: ```python -m q_learning```
 * M3DDPG: ```python -m main```
