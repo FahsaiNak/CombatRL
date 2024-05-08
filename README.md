@@ -1,5 +1,4 @@
-# CombatRL
-## Antibody-Virus Co-evolution Simulation with Multi-Agent Reinforcement Learning
+# CombatRL: Antibody-Virus Co-evolution Simulation with MARL
 This project investigates the potential of Multi-Agent Reinforcement Learning (MARL) approaches to simulate antibody-virus co-evolution.
 
 ### About
@@ -8,7 +7,8 @@ Simulating antibody-virus co-evolution is crucial for understanding immune respo
 ### Methods
 The project implements two MARL algorithms:
 * Q-learning: The antibody agent employs Q-learning to learn a policy for binding to the antigen.
-* M3DDPG: This actor-critic based approach inspired by minimax is used for the antigen agent. It allows the antigen to learn a policy for mutating its structure to evade the antibody. This implementation is based on the PyTorch version of M3DDPG [source](https://github.com/yoshinobc/M3DDPG-pytorch)
+* M3DDPG: This actor-critic based approach inspired by minimax is used for the antigen agent. It allows the antigen to learn a policy for mutating its structure to evade the antibody. This implementation is based on the [PyTorch version](https://github.com/yoshinobc/M3DDPG-pytorch) of M3DDPG.
+
 The simulation environment models the interaction between the antibody and antigen. The agents receive rewards based on their actions (binding or mutation) and the resulting outcome.
 
 ### Dependencies
@@ -18,5 +18,5 @@ The simulation environment models the interaction between the antibody and antig
 * (Optional) [Gymnasium](https://github.com/openai/gym?tab=readme-ov-file)
 
 ### Implementation
-* Q-learning: ```sh python -m q-learning```
-* M3DDPG: ```sh python -m main```
+* Q-learning: ```python -m q-learning```
+* M3DDPG: ```python -m main```
